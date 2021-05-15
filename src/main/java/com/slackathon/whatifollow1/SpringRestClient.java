@@ -1,97 +1,99 @@
 package com.slackathon.whatifollow1;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.tomcat.util.json.JSONParser;
 import org.apache.tomcat.util.json.ParseException;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import com.slack.api.methods.response.views.ViewsPublishResponse;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.slack.api.model.block.DividerBlock;
+import com.slack.api.model.block.SectionBlock;
+import com.slack.api.model.block.composition.MarkdownTextObject;
+import com.slack.api.model.block.composition.PlainTextObject;
+import com.slack.api.model.block.element.BlockElement;
+import com.slack.api.model.block.element.ButtonElement;
+import com.slack.api.model.view.View;
+import com.slackathon.whatifollow1.Utils.WhatIFollowUtils;
 import com.slackathon.whatifollow1.constants.WhatIFollowContants;
+import com.slackathon.whatifollow1.models.ViewPublishRequestJsonBuilder;
+import com.slackathon.whatifollow1.models.ViewPublishResponseJson;
 
 public class SpringRestClient {
 
 	public static void main(String[] args) throws ParseException, IOException {
-		// TODO Auto-generated method stub
-	/*	List<Blocks> blocks = new ArrayList<>();
 		
-		Blocks sectionBlock = new Blocks();
-		sectionBlock.setType("section");
-		Text sectionText = new Text();
-		sectionText.setType("mrkdwn");
-		sectionText.setText("<http://helloworld-7vs1668.slack.com/archives/C01R6H88VD1/p1620569874000700|@Thrylokya Geereddy has posted the message on #General>");
-		sectionBlock.setText(sectionText);
-		blocks.add(sectionBlock);
+		parseViewPubJson();
+		
+	}
 
-		Blocks dividerBlock = new Blocks();
-		dividerBlock.setType("divider");
-		blocks.add(dividerBlock);
+	private static void parseViewPubJson() throws JsonParseException, JsonMappingException, IOException {
 		
-		Blocks richTextBlock = new Blocks();
-		richTextBlock.setType("rich_text");
-		richTextBlock.setBlock_id("Ngl");
+		View view = ViewPublishRequestJsonBuilder.getHomePageSetup();
 		
-		List<Elements> elements = new ArrayList<>();
-		Elements rtsEle = new Elements();
-		rtsEle.setType("rich_text_section");
+		DividerBlock dividerBlock = DividerBlock.builder().build();
+		view.getBlocks().add(dividerBlock);
 		
-		List<Elements> innerElements = new ArrayList<>();
-		Elements textElement = new Elements();
-		textElement.setType("text");
-		textElement.setText("this is the message to check json ");
-		innerElements.add(textElement);
+		PlainTextObject textObject = new PlainTextObject("UnFollow", true);
 		
-		Elements emojiElement = new Elements();
-		emojiElement.setType("emoji");
-		emojiElement.setText("slightly_smiling_face");
-		innerElements.add(emojiElement);
+		ButtonElement buttonElement = ButtonElement.builder().text(textObject).build();
+		buttonElement.setValue("UnFollow");
+		List<BlockElement> newList = new ArrayList<>();
+		newList.add(buttonElement);
 		
-		Elements textElement2 = new Elements();
-		textElement2.setType("text");
-		textElement2.setText(" ");
-		innerElements.add(textElement2);
+		SectionBlock sectionBlock = SectionBlock.builder().text(MarkdownTextObject.builder().text("User 1").build())
+		.accessory(buttonElement).build();
 		
-		Elements emojiElement2 = new Elements();
-		emojiElement2.setType("emoji");
-		emojiElement2.setText("smile");
-		innerElements.add(emojiElement2);
-		rtsEle.setElements(innerElements);
-		elements.add(rtsEle);
-		richTextBlock.setElements(elements);
-		blocks.add(richTextBlock);
+		view.getBlocks().add(sectionBlock);
 		
-		ObjectMapper objectMapper = new ObjectMapper();
-		try {
-			System.out.println(objectMapper.writeValueAsString(blocks));
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
 		
-		File file = new ClassPathResource("staticModals/viewPublish.json").getFile();
-		FileReader fileReader = new FileReader(file);
-		JSONParser jsonParser = new JSONParser(fileReader);
-		Object obj = jsonParser.parse();
+		PlainTextObject textObject2 = new PlainTextObject("UnFollow", true);
 		
-        System.out.println(obj.toString());
+		ButtonElement buttonElement2 = ButtonElement.builder().text(textObject2).build();
+		buttonElement.setValue("UnFollow");
+		List<BlockElement> newList2 = new ArrayList<>();
+		newList2.add(buttonElement2);
 		
+		SectionBlock sectionBlock2 = SectionBlock.builder().text(MarkdownTextObject.builder().text("User 1").build())
+		.accessory(buttonElement).build();
+		view.getBlocks().add(dividerBlock);
+		view.getBlocks().add(sectionBlock2);
+		
+		String s = WhatIFollowUtils.convertObjectToJson(view);
+		System.out.println(s);
 		RestTemplate restTemplate = new RestTemplate();
+		
+		String json = "{"+
+				"\"user_id\" : \"U01RCG5NEFN\","+
+				"\"view\" :"+ s+
+		"}";
+		
+		System.out.println(json);
+		
+		//ViewsPublishRequest publishRequest = new ViewsPublishRequest(s,)
+		
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Authorization", "Bearer xoxb-1856586297971-2057635471889-QmG5qxQTUN9eENk1X9ZHNFL9");
-		String url = WhatIFollowContants.followAppHomeView+"?user=U01RCG5NEFN"+"pretty=1";
-		HttpEntity request = new HttpEntity(obj.toString(), headers);
-		ResponseEntity<ViewsPublishResponse> response = restTemplate.exchange(url,  HttpMethod.POST,
+		headers.set("Content-Type", "application/json");
+		String url = WhatIFollowContants.followAppHomeView;
+		HttpEntity request = new HttpEntity(json, headers);
+		System.out.println(request);
+		ResponseEntity<String> response = restTemplate.exchange(url,  HttpMethod.POST,
 		        request,
-		        ViewsPublishResponse.class,
+		        String.class,
 		        1);
 		System.out.println(response.toString());
+		
 	}
+	
+	
 }

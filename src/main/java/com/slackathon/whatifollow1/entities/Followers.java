@@ -9,7 +9,7 @@ import javax.persistence.NamedQuery;
 	    {  
 	        @NamedQuery(  
 	        name = "Followers.findFollowersForUser",  
-	        query = "SELECT f.followeById from Followers f where f.userId = :userId"  
+	        query = "SELECT f from Followers f where f.userId = :userId"  
 	        ),
 	        @NamedQuery(  
 	    	        name = "Followers.findIdByUserIdAndFollowerId",  
@@ -26,6 +26,7 @@ public class Followers {
 	private int Id;
 	
 	private String userId;
+	private String name;
 	private String followeById;
 	
 	public int getId() {
@@ -45,6 +46,12 @@ public class Followers {
 	}
 	public void setFolloweById(String followeById) {
 		this.followeById = followeById;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
 	}
 
 }

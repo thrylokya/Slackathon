@@ -1,0 +1,39 @@
+"blocks": [
+      {
+        "type": "section",
+        "block_id": "unmnP",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Test block with users select",
+          "verbatim": false
+        },
+        "accessory": {
+          "type": "users_select",
+          "action_id": "users_select-action",
+          "placeholder": {
+            "type": "plain_text",
+            "text": "Select a user",
+            "emoji": true
+          }
+        }
+      },
+      {
+        "type": "section",
+        "block_id": "GEdB",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Click follow if you want to see the messages posted by the user on any public groups.",
+          "verbatim": false
+        },
+        "accessory": {
+          "type": "button",
+          "action_id": "button-action",
+          "text": {
+            "type": "plain_text",
+            "text": "Click Me",
+            "emoji": true
+          },
+          "value": "click_me_123"
+        }
+      }
+    ]

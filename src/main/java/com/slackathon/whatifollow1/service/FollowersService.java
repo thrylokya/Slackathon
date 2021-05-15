@@ -1,16 +1,12 @@
 package com.slackathon.whatifollow1.service;
 
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.tomcat.util.json.JSONParser;
 import org.apache.tomcat.util.json.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -18,14 +14,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.slack.api.methods.response.views.ViewsPublishResponse;
 import com.slack.api.model.block.Blocks;
+import com.slack.api.model.block.DividerBlock;
+import com.slack.api.model.block.LayoutBlock;
+import com.slack.api.model.block.SectionBlock;
+import com.slack.api.model.block.composition.MarkdownTextObject;
+import com.slack.api.model.block.composition.PlainTextObject;
+import com.slack.api.model.block.element.BlockElement;
+import com.slack.api.model.block.element.ButtonElement;
+import com.slack.api.model.view.View;
+import com.slackathon.whatifollow1.Utils.WhatIFollowUtils;
 import com.slackathon.whatifollow1.constants.WhatIFollowContants;
 import com.slackathon.whatifollow1.entities.Followers;
 import com.slackathon.whatifollow1.models.ConversationsInfoResponse;
 import com.slackathon.whatifollow1.models.EventJson;
 import com.slackathon.whatifollow1.models.FollowersResponse;
 import com.slackathon.whatifollow1.models.UserInfoResponse;
+import com.slackathon.whatifollow1.models.ViewPublishRequestJsonBuilder;
 import com.slackathon.whatifollow1.repository.FollowersRepository;
 
 @Service
@@ -44,17 +49,17 @@ public class FollowersService {
 	{
 		Followers followers =new Followers(); ;
 		followers.setUserId(userId);
+		followers.setName(getUserDetails(followerId));
 		followers.setFolloweById(followerId);
 	
 			Followers savedFollower = followersRepo.save(followers);
 			return savedFollower.getId();
-		
 	}
 	
 	
 	public FollowersResponse getFollowers(String userId)
 	{
-		List<String> followers =  followersRepo.findFollowersForUser(userId);
+		List<Followers> followers =  followersRepo.findFollowersForUser(userId);
 		FollowersResponse followersResponse = new FollowersResponse();
 		followersResponse.setUserId(userId);
 		followersResponse.setFollowersList(followers);
@@ -127,7 +132,7 @@ public class FollowersService {
 		RestTemplate restTemplate = new RestTemplate();
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Authorization", "Bearer "+token);
-		String url = WhatIFollowContants.userInfoMethodURL+"?user="+user+"pretty=1";
+		String url = WhatIFollowContants.userInfoMethodURL+"?user="+user+"&pretty=1";
 		HttpEntity request = new HttpEntity(headers);
 		ResponseEntity<UserInfoResponse> response = restTemplate.exchange(url,  HttpMethod.GET,
 		        request,
@@ -138,27 +143,119 @@ public class FollowersService {
 	}
 
 
-	public void setHomePage(EventJson eventJson) throws ParseException, IOException {
+	public void setHomePage(String user, String type, String followerId) throws ParseException, IOException {
 		// TODO Auto-generated method stub
 		
-		File file = new ClassPathResource("staticModals/viewPublish.json").getFile();
-		FileReader fileReader = new FileReader(file);
-		JSONParser jsonParser = new JSONParser(fileReader);
-		Object obj = jsonParser.parse();
+		View view = ViewPublishRequestJsonBuilder.getHomePageSetup();
 		
-        System.out.println(obj.toString());
+		if(type!=null && type.equalsIgnoreCase("block_actions"))
+		{
+			boolean isFollower = checkIfFollowerExists(followerId, user);
+			if(!isFollower)
+			{
+				List<LayoutBlock> blocks = getFollowButtonBlock(followerId);
+				if(blocks.size()>0)
+				{
+					view.getBlocks().addAll(blocks);
+			
+				}
+			}
+		}
+		FollowersResponse followersResponse= getFollowers(user);
+		List<LayoutBlock> blocks = getBlocksForUsers(followersResponse.getFollowersList());
+		view.getBlocks().addAll(blocks);
 		
-		RestTemplate restTemplate = new RestTemplate();
+		String jsonPayload = jsonPayloadForViewPublish(user, view);
+		
 		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer xoxb-1856586297971-2057635471889-QmG5qxQTUN9eENk1X9ZHNFL9");
-		String url = WhatIFollowContants.followAppHomeView+"?user=U01RCG5NEFN"+"pretty=1";
-		HttpEntity request = new HttpEntity(obj.toString(), headers);
-		ResponseEntity<ViewsPublishResponse> response = restTemplate.exchange(url,  HttpMethod.POST,
-		        request,
-		        ViewsPublishResponse.class,
-		        1);
-		System.out.println(response.toString());
+		headers.set("Authorization", "Bearer "+token);
+		headers.set("Content-Type", "application/json");
+		
+		String url = WhatIFollowContants.followAppHomeView;
+		HttpEntity request = new HttpEntity(jsonPayload, headers);
+		
+		ResponseEntity<String> response = WhatIFollowUtils.sendRequest(request, url, String.class, headers);
+		System.out.println(response.getBody());
+	}
+
+
+	private boolean checkIfFollowerExists(String followerId, String user) {
+		// TODO Auto-generated method stub
+		
+		List<Followers> followers = followersRepo.findIdByUserIdAndFollowerId(user, followerId);
+		if(followers.size()>0)
+		{
+			return true;
+		}
+		else {
+			return false;
+		}
 		
 	}
+
+
+	private List<LayoutBlock> getFollowButtonBlock(String followerId) {
+		// TODO Auto-generated method stub
+		
+		
+		List<LayoutBlock> blocks = new ArrayList();
+			
+			PlainTextObject textObject = new PlainTextObject("Follow", true);
+			
+			ButtonElement buttonElement = ButtonElement.builder().text(textObject).build();
+			buttonElement.setValue(followerId);
+			//buttonElement.setActionId(followerId);
+			List<BlockElement> newList = new ArrayList<>();
+			newList.add(buttonElement);
+			
+			SectionBlock sectionBlock = SectionBlock.builder().text(MarkdownTextObject.builder().text(" ").build())
+			.accessory(buttonElement).build();
+			
+			blocks.add(sectionBlock);
+		
+		return blocks;
+		
+	}
+
+
+	private  String jsonPayloadForViewPublish(String user, View view) {
+		// TODO Auto-generated method stub
+		
+		String viewJson = WhatIFollowUtils.convertObjectToJson(view);
+		
+		String json = "{"+
+				"\"user_id\" : "+"\""+user+"\","+
+				"\"view\" :"+ viewJson+
+		"}";
+		
+		return json;
+	}
+
+
+	private List<LayoutBlock> getBlocksForUsers(List<Followers> followersList) {
+		// TODO Auto-generated method stub
+		
+		List<LayoutBlock> blocks = new ArrayList();
+		for(Followers follower : followersList)
+		{
+			DividerBlock dividerBlock = DividerBlock.builder().build();
+			blocks.add(dividerBlock);
+			
+			PlainTextObject textObject = new PlainTextObject("UnFollow", true);
+			
+			ButtonElement buttonElement = ButtonElement.builder().text(textObject).build();
+			buttonElement.setValue(follower.getFolloweById());
+			List<BlockElement> newList = new ArrayList<>();
+			newList.add(buttonElement);
+			
+			SectionBlock sectionBlock = SectionBlock.builder().text(MarkdownTextObject.builder().text(follower.getName()).build())
+			.accessory(buttonElement).build();
+			
+			blocks.add(sectionBlock);
+		}
+		
+		return blocks;
+	}
+	
 
 }

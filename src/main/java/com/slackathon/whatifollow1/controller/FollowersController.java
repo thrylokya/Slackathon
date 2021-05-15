@@ -1,5 +1,8 @@
 package com.slackathon.whatifollow1.controller;
 
+import java.io.IOException;
+
+import org.apache.tomcat.util.json.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slackathon.whatifollow1.models.EventJson;
 import com.slackathon.whatifollow1.models.FollowerJSON;
 import com.slackathon.whatifollow1.models.FollowersResponse;
+import com.slackathon.whatifollow1.models.InteractResponse;
 import com.slackathon.whatifollow1.service.FollowersService;
 
 @RestController
@@ -92,7 +96,7 @@ public class FollowersController {
 			else {
 				if(eventJson.getEvent().getType().equalsIgnoreCase("app_home_opened")) {
 					followersService.setChannelId(eventJson.getEvent().getChannel());
-					followersService.setHomePage(eventJson);
+					followersService.setHomePage(eventJson.getEvent().getUser(),null,null);
 					responseEntity = new ResponseEntity<String>("channel Id extracted successfully", HttpStatus.OK);
 				}
 				else {
@@ -115,6 +119,32 @@ public class FollowersController {
 		
 		System.out.println(responseEntity);
 		return responseEntity;
+		
+	}
+	
+	
+	@RequestMapping(value = "/interactive", method = RequestMethod.POST)
+	public void slackInteractNotifier(@RequestBody InteractResponse interactResponse) throws ParseException, IOException
+	{
+		String actionType = interactResponse.getActions().get(0).getType();
+		if(actionType.equalsIgnoreCase("users_select"))
+		{
+			followersService.setHomePage(interactResponse.getUser().getId(), interactResponse.getType(), interactResponse.getActions().get(0).getSelected_user());
+		}
+		
+		if(actionType.equalsIgnoreCase("button"))
+		{
+			if(interactResponse.getActions().get(0).getText().getText().equalsIgnoreCase("Follow"))
+			{
+				followersService.insertFollower(interactResponse.getUser().getId(), interactResponse.getActions().get(0).getValue());
+				followersService.setHomePage(interactResponse.getUser().getId(),null,null);
+			}
+			if(interactResponse.getActions().get(0).getText().getText().equalsIgnoreCase("UnFollow"))
+			{
+				followersService.unFollowUser(interactResponse.getUser().getId(), interactResponse.getActions().get(0).getValue());
+				followersService.setHomePage(interactResponse.getUser().getId(),null,null);
+			}
+		}
 		
 	}
 	

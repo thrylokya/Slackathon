@@ -27,7 +27,24 @@
     <artifactId>javax.ws.rs-api</artifactId>
     <version>2.1.1</version>
 </dependency>
+<dependency>
+    <groupId>com.googlecode.json-simple</groupId>
+    <artifactId>json-simple</artifactId>
+    <version>1.1.1</version>
+</dependency>
+<!-- https://mvnrepository.com/artifact/com.slack.api/slack-api-model -->
+<dependency>
+    <groupId>com.slack.api</groupId>
+    <artifactId>slack-api-model</artifactId>
+    <version>1.8.0</version>
+</dependency>
 
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.12</version>
+        <scope>provided</scope>
+</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -69,6 +86,12 @@
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
     
+    <!-- https://mvnrepository.com/artifact/org.springframework/spring-web -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-web</artifactId>
+    <version>5.3.7</version>
+</dependency>
     
 	</dependencies>
 
