@@ -1,9 +1,15 @@
 package com.slackathon.whatifollow1.entities;
 
+import java.util.Date;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @NamedQueries(  
 	    {  
@@ -17,8 +23,10 @@ import javax.persistence.NamedQuery;
 	    	        )
 	    }  
 	) 
-
+@Data
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
 public class Followers {
 	
 	@javax.persistence.Id
@@ -28,30 +36,8 @@ public class Followers {
 	private String userId;
 	private String name;
 	private String followeById;
+	private String imageUrl;
+	private String createdDate;
+	private String title;
 	
-	public int getId() {
-		return Id;
-	}
-	public void setId(int id) {
-		Id = id;
-	}
-	public String getUserId() {
-		return userId;
-	}
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-	public String getFolloweById() {
-		return followeById;
-	}
-	public void setFolloweById(String followeById) {
-		this.followeById = followeById;
-	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-
 }

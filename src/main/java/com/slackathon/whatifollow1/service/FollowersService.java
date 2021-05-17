@@ -2,37 +2,53 @@ package com.slackathon.whatifollow1.service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.tomcat.util.json.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import com.slack.api.model.block.Blocks;
+import com.slack.api.methods.response.chat.ChatGetPermalinkResponse;
+import com.slack.api.model.block.ActionsBlock;
+import com.slack.api.model.block.ContextBlock;
+import com.slack.api.model.block.ContextBlockElement;
 import com.slack.api.model.block.DividerBlock;
+import com.slack.api.model.block.HeaderBlock;
 import com.slack.api.model.block.LayoutBlock;
+import com.slack.api.model.block.RichTextBlock;
 import com.slack.api.model.block.SectionBlock;
 import com.slack.api.model.block.composition.MarkdownTextObject;
 import com.slack.api.model.block.composition.PlainTextObject;
 import com.slack.api.model.block.element.BlockElement;
 import com.slack.api.model.block.element.ButtonElement;
+import com.slack.api.model.block.element.ImageElement;
+import com.slack.api.model.block.element.RichTextElement;
+import com.slack.api.model.block.element.RichTextSectionElement;
+import com.slack.api.model.block.element.RichTextSectionElement.Broadcast;
+import com.slack.api.model.block.element.RichTextSectionElement.Channel;
+import com.slack.api.model.block.element.RichTextSectionElement.Color;
+import com.slack.api.model.block.element.RichTextSectionElement.Date;
+import com.slack.api.model.block.element.RichTextSectionElement.Emoji;
+import com.slack.api.model.block.element.RichTextSectionElement.Link;
+import com.slack.api.model.block.element.RichTextSectionElement.Team;
+import com.slack.api.model.block.element.RichTextSectionElement.Text;
+import com.slack.api.model.block.element.RichTextSectionElement.User;
 import com.slack.api.model.view.View;
 import com.slackathon.whatifollow1.Utils.WhatIFollowUtils;
 import com.slackathon.whatifollow1.constants.WhatIFollowContants;
 import com.slackathon.whatifollow1.entities.Followers;
+import com.slackathon.whatifollow1.models.Blocks;
 import com.slackathon.whatifollow1.models.ConversationsInfoResponse;
+import com.slackathon.whatifollow1.models.Elements;
 import com.slackathon.whatifollow1.models.EventJson;
 import com.slackathon.whatifollow1.models.FollowersResponse;
 import com.slackathon.whatifollow1.models.UserInfoResponse;
 import com.slackathon.whatifollow1.models.ViewPublishRequestJsonBuilder;
 import com.slackathon.whatifollow1.repository.FollowersRepository;
-
 @Service
 public class FollowersService {
 	
@@ -48,11 +64,18 @@ public class FollowersService {
 	public int insertFollower(String userId, String followerId)
 	{
 		Followers followers =new Followers(); ;
-		followers.setUserId(userId);
-		followers.setName(getUserDetails(followerId));
+		
+		
+		com.slackathon.whatifollow1.models.User user = getUserDetails(followerId);
+		
+		followers.setName(user.getName());
 		followers.setFolloweById(followerId);
-	
-			Followers savedFollower = followersRepo.save(followers);
+		followers.setCreatedDate(new Date().toString());
+		followers.setImageUrl(user.getProfile().getImageOriginal());
+		followers.setTitle(user.getProfile().getTitle());
+		followers.setUserId(userId);
+		
+		Followers savedFollower = followersRepo.save(followers);
 			return savedFollower.getId();
 	}
 	
@@ -88,58 +111,161 @@ public class FollowersService {
 	
 	public void messageToChannel(EventJson eventJson)
 	{
-		constructBlockFromRequest(eventJson);
+		String json = constructBlockFromRequest(eventJson);
+		ResponseEntity<String> response = WhatIFollowUtils.sendRequest(token,webhookURL,String.class,HttpMethod.POST,json);
 		
-		System.out.println(this.webhookURL);
+		System.out.println(response);
 		
 	}
 
 
-	private void constructBlockFromRequest(EventJson eventJson) {
+	private String constructBlockFromRequest(EventJson eventJson) {
+		// TODO Auto-generated method stub
+		com.slackathon.whatifollow1.models.User user = getUserDetails(eventJson.getEvent().getUser());
+		String userName = user.getName();
+		String channelName = getChannelDetails(eventJson.getEvent().getChannel());
+		String permaLink = getPermaLink(eventJson.getEvent().getChannel(), eventJson.getEvent().getTs());
+		
+		List<LayoutBlock> blocks = new ArrayList<>();
+		List<LayoutBlock> headerblocks = buildHeaderBlocks(permaLink,userName,channelName );
+		blocks.addAll(headerblocks);
+		blocks.addAll(getLayoutBlocksFromRequest(eventJson));
+		
+		String blockJson = WhatIFollowUtils.convertObjectToJson(blocks);
+		String json = "{"+
+				"\"blocks\" : "+blockJson+
+		"}";
+		
+		System.out.println("blockJson is"+json);
+		
+		return json;
+	}
+
+
+
+
+	private Collection<? extends LayoutBlock> getLayoutBlocksFromRequest(EventJson eventJson) {
+		// TODO Auto-generated method stub
+		List<LayoutBlock> blocks = new ArrayList<>();
+		for(Blocks b : eventJson.getEvent().getBlocks())
+		{
+			if(b.getType().equalsIgnoreCase("rich_text"))
+			{
+				List<BlockElement> elements = new ArrayList<>();
+				for(Elements e: b.getElements())
+				{
+					if(e.getType().equalsIgnoreCase("rich_text_section"))
+					{
+						List<RichTextElement> richTextElements = new ArrayList<>();
+						for(Elements ele:e.getElements())
+						{
+							if(ele.getType().equalsIgnoreCase("text"))
+							{
+								Text text = new RichTextSectionElement.Text(ele.getText(),null);
+								richTextElements.add(text);
+							}
+							if(ele.getType().equalsIgnoreCase("emoji"))
+							{
+								Emoji emoji = new RichTextSectionElement.Emoji(ele.getName(),null,null);
+								richTextElements.add(emoji);
+							}
+							if(ele.getType().equalsIgnoreCase("channel"))
+							{
+								 Channel channel = new RichTextSectionElement.Channel(ele.getChannelId(),null);
+								 richTextElements.add(channel);
+							}
+							if(ele.getType().equalsIgnoreCase("user"))
+							{
+								User user = new RichTextSectionElement.User(ele.getUser_id(),null);
+								richTextElements.add(user);
+							}
+							if(ele.getType().equalsIgnoreCase("link"))
+							{
+								Link link = new RichTextSectionElement.Link(ele.getUrl(),ele.getText(),null);
+								richTextElements.add(link);
+							}
+							if(ele.getType().equalsIgnoreCase("team"))
+							{
+								Team team = new RichTextSectionElement.Team(ele.getTeamId(),null);
+								richTextElements.add(team);
+							}
+							if(ele.getType().equalsIgnoreCase("date"))
+							{
+								Date date = new RichTextSectionElement.Date(ele.getTimestamp());
+								richTextElements.add(date);
+							}
+							if(ele.getType().equalsIgnoreCase("broadcast"))
+							{
+								Broadcast broadcast = new RichTextSectionElement.Broadcast(ele.getRange());
+								richTextElements.add(broadcast);
+							}
+							if(ele.getType().equalsIgnoreCase("color"))
+							{
+								Color color = new RichTextSectionElement.Color(ele.getValue());
+								richTextElements.add(color);
+							}
+						}
+						BlockElement element = RichTextSectionElement.builder().elements(richTextElements).build();
+						elements.add(element);
+						
+					}
+				}
+				blocks.add(RichTextBlock.builder().elements(elements).build());
+			}
+		}
+		
+		return blocks;
+	}
+
+
+	private List<LayoutBlock> buildHeaderBlocks(String permaLink, String userName, String channelName) {
 		// TODO Auto-generated method stub
 		
-		String userName = getUserDetails(eventJson.getEvent().getUser());
-		String channelName = getChannelDetails(eventJson.getEvent().getChannel());
+		List<LayoutBlock> blocks = new ArrayList<LayoutBlock>();
 		
-		List<Blocks> blocks = new ArrayList<>();
+		blocks.add(SectionBlock.builder().text(MarkdownTextObject.builder().text("<"+permaLink+"|@"+userName+" has posted a message in #"+channelName+">").build()).build());
 		
+		DividerBlock dividerBlock = DividerBlock.builder().build();
+		blocks.add(dividerBlock);
 		
+		return blocks;
+	}
+
+
+	private String getPermaLink(String channel, String ts) {
+		// TODO Auto-generated method stub
+		
+		String url = WhatIFollowContants.permaLinkURL+"?channel="+channel+"&message_ts="+ts;
+		
+		ResponseEntity<ChatGetPermalinkResponse> response = WhatIFollowUtils.sendRequest(token, url, ChatGetPermalinkResponse.class,  HttpMethod.GET,null);
+		
+		return  response.getBody().getPermalink();
 	}
 
 
 	private String getChannelDetails(String channel) {
 		// TODO Auto-generated method stub
 		
-		RestTemplate restTemplate = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer "+token);
-		HttpEntity request = new HttpEntity(headers);
-		ResponseEntity<ConversationsInfoResponse> response = restTemplate.exchange(
-				"https://slack.com/api/conversations.info?channel="+channel+"&pretty=1",
-		        HttpMethod.GET,
-		        request,
-		        ConversationsInfoResponse.class,
-		        1
-		);
-
+		String url = WhatIFollowContants.channelInfoMethodURL+"?channel="+channel+"&pretty=1";
+		
+		ResponseEntity<ConversationsInfoResponse> response = WhatIFollowUtils.sendRequest(token, url, ConversationsInfoResponse.class,  HttpMethod.GET,null);
+		
 		return  response.getBody().getChannel().getName();
 	}
 
 
-	private String getUserDetails(String user) {
+	private com.slackathon.whatifollow1.models.User getUserDetails(String user) {
 		// TODO Auto-generated method stub
 		
-		RestTemplate restTemplate = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer "+token);
 		String url = WhatIFollowContants.userInfoMethodURL+"?user="+user+"&pretty=1";
-		HttpEntity request = new HttpEntity(headers);
-		ResponseEntity<UserInfoResponse> response = restTemplate.exchange(url,  HttpMethod.GET,
-		        request,
-		        UserInfoResponse.class,
-		        1);
 		
-		return response.getBody().getUser().getName();
+		ResponseEntity<UserInfoResponse> response = WhatIFollowUtils.sendRequest(token, url, UserInfoResponse.class,  HttpMethod.GET,null);
+		if(response.getBody()!= null && response.getBody().getUser()!=null)
+		{
+			return response.getBody().getUser();
+		}
+		else 
+			return null;
 	}
 
 
@@ -162,19 +288,18 @@ public class FollowersService {
 			}
 		}
 		FollowersResponse followersResponse= getFollowers(user);
-		List<LayoutBlock> blocks = getBlocksForUsers(followersResponse.getFollowersList());
-		view.getBlocks().addAll(blocks);
+		if(followersResponse.getFollowersList().size()>0)
+		{
+			List<LayoutBlock> blocks = getBlocksForUsers(followersResponse.getFollowersList());
+			view.getBlocks().addAll(blocks);
+		}
+			
 		
 		String jsonPayload = jsonPayloadForViewPublish(user, view);
 		
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer "+token);
-		headers.set("Content-Type", "application/json");
-		
 		String url = WhatIFollowContants.followAppHomeView;
-		HttpEntity request = new HttpEntity(jsonPayload, headers);
 		
-		ResponseEntity<String> response = WhatIFollowUtils.sendRequest(request, url, String.class, headers);
+		ResponseEntity<String> response = WhatIFollowUtils.sendRequest(token, url, String.class,  HttpMethod.POST,jsonPayload);
 		System.out.println(response.getBody());
 	}
 
@@ -216,6 +341,8 @@ public class FollowersService {
 		return blocks;
 		
 	}
+	
+	
 
 
 	private  String jsonPayloadForViewPublish(String user, View view) {
@@ -227,12 +354,66 @@ public class FollowersService {
 				"\"user_id\" : "+"\""+user+"\","+
 				"\"view\" :"+ viewJson+
 		"}";
-		
+		json = json.replaceAll("\"imageUrl\"", "\"image_url\"");
+		json = json.replaceAll("\"altText\"", "\"alt_text\"");
 		return json;
 	}
 
 
 	private List<LayoutBlock> getBlocksForUsers(List<Followers> followersList) {
+		// TODO Auto-generated method stub
+		
+		List<LayoutBlock> blocks = new ArrayList();
+		
+		PlainTextObject textObject = new PlainTextObject("People you Follow", true);
+		
+		blocks.add(HeaderBlock.builder().text(textObject).build());
+		
+		
+		
+		for(Followers follower : followersList)
+		{
+			DividerBlock dividerBlock = DividerBlock.builder().build();
+			blocks.add(dividerBlock);
+			
+			ImageElement imageElement = new ImageElement();
+			imageElement.setImageUrl(follower.getImageUrl());
+			imageElement.setAltText(follower.getName());
+			
+			SectionBlock sectionBlock = SectionBlock.builder().text(MarkdownTextObject.builder().text(follower.getName()).build())
+					.accessory(imageElement).build();
+			
+			blocks.add(sectionBlock);
+			
+			MarkdownTextObject markdownTextObject =  MarkdownTextObject.builder().text("Following since "+ follower.getCreatedDate()).build();
+			List<ContextBlockElement> contextBlockElements = new ArrayList<>();
+			contextBlockElements.add(markdownTextObject);
+			ContextBlock contextBlock = ContextBlock.builder().elements(contextBlockElements).build();
+			blocks.add(contextBlock);
+			
+			PlainTextObject unFollowButton = new PlainTextObject("UnFollow", true);
+			
+			ButtonElement unFollowbuttonElement = ButtonElement.builder().text(unFollowButton).build();
+			unFollowbuttonElement.setValue(follower.getFolloweById());
+			unFollowbuttonElement.setStyle("danger");
+			
+			PlainTextObject viewDetailButton = new PlainTextObject("View Details", true);
+			ButtonElement viewDetailbuttonElement = ButtonElement.builder().text(viewDetailButton).build();
+			viewDetailbuttonElement.setValue(follower.getFolloweById());
+			
+			List<BlockElement> newList = new ArrayList<>();
+			newList.add(unFollowbuttonElement);
+			newList.add(viewDetailbuttonElement);
+			
+			ActionsBlock actionsBlock = ActionsBlock.builder().elements(newList).build();
+			
+			blocks.add(actionsBlock);
+		}
+		
+		return blocks;
+	}
+	
+	private List<LayoutBlock> getBlocksForUsers_bkp(List<Followers> followersList) {
 		// TODO Auto-generated method stub
 		
 		List<LayoutBlock> blocks = new ArrayList();

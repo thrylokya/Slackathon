@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.slack.api.model.event.Event;
+import com.slack.api.model.event.MessageEvent;
 import com.slackathon.whatifollow1.models.EventJson;
 import com.slackathon.whatifollow1.models.FollowerJSON;
 import com.slackathon.whatifollow1.models.FollowersResponse;
@@ -105,7 +107,7 @@ public class FollowersController {
 						ObjectMapper objectMapper = new ObjectMapper();
 						String jsonStr = objectMapper.writeValueAsString(eventJson);
 						System.out.println(jsonStr);
-					//	followersService.messageToChannel();
+						followersService.messageToChannel(eventJson);
 					}
 					
 				}
@@ -121,6 +123,7 @@ public class FollowersController {
 		return responseEntity;
 		
 	}
+	
 	
 	
 	@RequestMapping(value = "/interactive", method = RequestMethod.POST)

@@ -7,7 +7,7 @@ import com.slack.api.model.block.LayoutBlock;
 import com.slack.api.model.block.SectionBlock;
 import com.slack.api.model.block.composition.MarkdownTextObject;
 import com.slack.api.model.block.composition.PlainTextObject;
-import com.slack.api.model.block.element.UsersSelectElement;
+import com.slack.api.model.block.element.ButtonElement;
 import com.slack.api.model.view.View;
 
 public class ViewPublishRequestJsonBuilder {
@@ -17,12 +17,14 @@ public class ViewPublishRequestJsonBuilder {
 		View view = new View();
 		List<LayoutBlock> blocks = new ArrayList<LayoutBlock>();
 		
-		UsersSelectElement usersSelectElement = new UsersSelectElement();
-		PlainTextObject plainTextObject = new PlainTextObject("Select a user", true);
-		usersSelectElement.setPlaceholder(plainTextObject);
+		ButtonElement buttonElement = new ButtonElement();
+		PlainTextObject textObject = new PlainTextObject("Search for a User to Follow", true);
+		buttonElement.setStyle("primary");
+		buttonElement.setValue("SearchUser");
+		buttonElement.setText(textObject);
 		
-		blocks.add(SectionBlock.builder().text(MarkdownTextObject.builder().text("Select the user from the users List").build())
-			.accessory(usersSelectElement).build());
+		blocks.add(SectionBlock.builder().text(MarkdownTextObject.builder().text(":wave:*Welcome to SlackFeed!* \n To view any users public channels' messages, select any user and click Follow. ").build())
+			.accessory(buttonElement).build());
 		
 		view.setType("home");
 		view.setBlocks(blocks);
