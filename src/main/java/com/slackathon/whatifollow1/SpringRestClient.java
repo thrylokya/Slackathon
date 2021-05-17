@@ -118,7 +118,7 @@ public class SpringRestClient {
 		//ViewsPublishRequest publishRequest = new ViewsPublishRequest(s,)
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer xoxb-1856586297971-2057635471889-6XE4pVnEugA2ZnaMvmxjDHWq");
+		
 		headers.set("Content-Type", "application/json");
 		String url = WhatIFollowContants.followAppHomeView;
 		HttpEntity request = new HttpEntity(json, headers);
